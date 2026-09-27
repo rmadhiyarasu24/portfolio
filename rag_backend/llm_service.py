@@ -9,6 +9,8 @@ from abc import ABC, abstractmethod
 from dotenv import load_dotenv
 
 load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 SYSTEM_INSTRUCTION = """You are "Madhiyarasu AI", the official intelligent portfolio assistant for Madhiyarasu R.
 Your role is to answer questions about Madhiyarasu's profile, education, technical skills, AI/ML knowledge, internships, projects, technologies, certifications, achievements, career interests, and contact information.
@@ -40,7 +42,7 @@ class GeminiLLMProvider(LLMProviderBase):
 
         from google import genai
         self.client = genai.Client(api_key=self.api_key)
-        self.model_name = "gemini-2.5-flash"
+        self.models_to_try = ["gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash"]
 
     def generate_answer(self, query: str, context_chunks: List[Dict[str, str]], history: Optional[List[Dict[str, str]]] = None) -> str:
         context_text = "\n\n".join([
@@ -66,22 +68,20 @@ PORTFOLIO CONTEXT:
 
 ANSWER (grounded strictly in the portfolio context):"""
 
-        try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt
-            )
-            return response.text.strip()
-        except Exception as e:
-            # Fallback to gemini-1.5-flash if model name differs
+        last_error = None
+        for model in self.models_to_try:
             try:
                 response = self.client.models.generate_content(
-                    model="gemini-1.5-flash",
+                    model=model,
                     contents=prompt
                 )
-                return response.text.strip()
-            except Exception as e2:
-                raise RuntimeError(f"Gemini API generation failed: {e2}")
+                if response and response.text:
+                    return response.text.strip()
+            except Exception as e:
+                last_error = e
+                continue
+
+        raise RuntimeError(f"All Gemini models failed: {last_error}")
 
 
 class LocalExtractiveLLMProvider(LLMProviderBase):

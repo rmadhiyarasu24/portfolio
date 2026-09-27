@@ -14,6 +14,8 @@ from vector_store import get_vector_store
 from llm_service import get_llm_provider
 
 load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 app = FastAPI(
     title="Madhiyarasu AI Portfolio RAG Service",
